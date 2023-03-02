@@ -1,0 +1,359 @@
+private void button1_Click(object sender, EventArgs e)
+        {
+
+
+            //使用手册：每个表格的粘贴都是以si=数字寻找标签位置，标签位置的确定要注意
+            //不能在文档标题附近，最好有正文以及表格标题分隔开，不然粘贴的时候容易造成文档标题序号错误的问题
+
+
+            // 指定Excel文件路径
+            //pathexcel = @"f:/Users/dell/Desktop/excel粘贴word报告集/excel粘贴word报告程序/test.xlsx";
+            //string pathexcel = @"C:\Users\a\Desktop\excel粘贴word报告集\excel粘贴word报告集\excel粘贴word报告程序\test.xlsx";
+
+            // 创建一个Excel应用程序实例
+            Microsoft.Office.Interop.Excel.Application excelApp = new Microsoft.Office.Interop.Excel.Application();
+
+            //初始化excel的workbook
+            Microsoft.Office.Interop.Excel.Workbook workbook = null;
+
+            //初始化excel的worksheet1
+            Microsoft.Office.Interop.Excel.Worksheet worksheet1 = null;
+
+            // 指定word文件路径
+            string pathword = @"f:/Users/dell/Desktop/excel粘贴word报告集/excel粘贴word报告程序/test.doc";
+            //string pathword = @"C:\Users\a\Desktop\excel粘贴word报告集\excel粘贴word报告集\excel粘贴word报告程序\test.doc";
+
+
+            // 创建一个word应用程序实例
+            Microsoft.Office.Interop.Word.Application wordApp = new Microsoft.Office.Interop.Word.Application();
+
+            //初始化word的doc
+            Microsoft.Office.Interop.Word.Document wordDoc = null;
+
+            //初始化excel检测工作簿
+            Microsoft.Office.Interop.Excel.Workbook workbookSearch = null;
+
+            //初始化word检测文档
+            Microsoft.Office.Interop.Word.Document wordDocSearch = null;
+
+            //excelApp.Visible = true;
+            //wordApp.Visible = true;
+
+            try
+            {
+                // 检测文件是否已经打开，若已经打开则关闭文件
+                foreach (Excel.Workbook wbSearch in excelApp.Workbooks)
+                {
+                    if (wbSearch.FullName == pathexcel)
+                    {
+                        workbookSearch = wbSearch;
+                        break;
+                    }
+                }
+                if (workbookSearch != null)
+                {
+                    workbookSearch.Close(false);
+                }
+
+                // 打开文件
+                workbook = excelApp.Workbooks.Open(pathexcel);
+
+                // 进行其他操作
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开excel模板失败：" + ex.Message);
+            }
+            finally
+            {
+
+            }
+
+
+            try
+            {
+                // 检测文件是否已经打开，若已经打开则关闭文件
+                foreach (Word.Document docSearch in wordApp.Documents)
+                {
+                    if (docSearch.FullName == pathword)
+                    {
+                        wordDocSearch = docSearch;
+                        break;
+                    }
+                }
+                if (wordDocSearch != null)
+                {
+                    wordDocSearch.Close(false);
+                }
+
+                // 打开文件
+                wordDoc = wordApp.Documents.Open(pathword);
+
+                // 进行其他操作
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开word模板失败：" + ex.Message);
+
+            }
+            finally
+            {
+
+            }
+
+            //工作主体函数：包括寻找每个表格中的复制区域，
+            for (int si = 1; si <= workbook.Worksheets.Count - 1; si++)
+            {
+
+                //激活需要进行处理的excel的worksheet
+
+                ((Excel.Worksheet)workbook.Worksheets[si]).Activate();
+
+                //初始化复制区域表头有多少行需要在word中作为标题行重复
+
+                int rowtitle = 1;
+
+                //确定选择区域的左上角，即起始位置,寻找单元格内容为“编号”的单元格，作为起始左上角
+
+                //初始化选择区域的左上角
+
+                string selstart = null;
+
+                //初始化选择区域的右下角，即真正的结束位置，用以合并结束位置的行列号
+
+                string selend = null;
+
+                //初始化选择区域右下角的行号
+
+                int selendrow = 0;
+
+                //初始化选择区域右下角的列号
+
+                int selendcol = 0;
+
+                //默认起始位置在前10列，前20行中
+
+                for (int j = 1; j <= 10; j++)
+                {
+                    int countrow = 0;
+                    int countcol = 0;
+                    for (int i = 1; i <= 20; i++)
+                    {
+                        //以“编号”作为整个表格的起始，找到后跳出当前循环
+
+                        if (((Excel.Worksheet)workbook.Worksheets[si]).Cells[i, j].Value == "编号")
+                        {
+                            selstart = Convert.ToChar(j + 64).ToString() + i.ToString();
+                            countrow = i;
+                            countcol = j;
+                            break;
+                        }
+                    }
+
+                    //判断是否已经找到起始位置，若已经找到，判断找到的起始位置的行号和列号，若都不为0，
+                    //则找到复制的结束位置后，找复制区域第一行有多少跨行合并单元格，跨了多少行，找跳出整个循环
+
+                    if (!string.IsNullOrEmpty(selstart) && countrow != 0 && countcol != 0)
+                    {
+
+                        //寻找区域右下角列号，默认标题行最多在编号后20行
+
+                        for (int k = 1; k <= 20; k++)
+                        {
+
+                            //当前单元格不为空时，选择区域的行号等于当前单元格行号
+                            string aaa = ((Excel.Worksheet)workbook.Worksheets[si]).Cells[countrow, k + countcol].Value;
+                            if (!string.IsNullOrEmpty(((Excel.Worksheet)workbook.Worksheets[si]).Cells[countrow, k + countcol].Value))
+                            {
+
+                                selendcol = k + countcol;
+
+                            }
+
+                            //若当前单元格为空时，查看本单元格是否为合并单元格，若是合并单元格，查看其跨列合并了多少列
+
+                            else if (((Excel.Worksheet)workbook.Worksheets[si]).Cells[countrow, k + countcol].MergeCells)
+                            {
+
+                                //// 获取合并单元格区域
+
+                                //Excel.Range mergedRange = ((Excel.Worksheet)workbook.Worksheets[si]).Cells[countrow, k + countcol - 1].MergeArea;
+
+                                ////选择区域的行号等于当前单元格前一个单元格的行号加上其跨列合并的列数-1
+
+                                //selendcol = (k + countcol - 1) + (mergedRange.Columns.Count - 1);
+
+                                selendcol = k + countcol;
+
+
+                            }
+                        }
+
+                        //将列号的数字转为大写英文字母
+
+                        string ascend = Convert.ToChar(selendcol + 64).ToString();
+
+                        //寻找区域右下角行号,在每一列中找到最大行号，并把最大行号赋值给selendrow
+                        for (int i = countcol; i < selendcol; i++)
+                        {
+                            if (selendrow <= ((Excel.Worksheet)workbook.Worksheets[si]).Cells[1000, i].End[Excel.XlDirection.xlUp].Row)
+                            {
+                                selendrow = ((Excel.Worksheet)workbook.Worksheets[si]).Cells[1000, i].End[Excel.XlDirection.xlUp].Row;
+                            }
+                        }
+
+                        //合并结束位置的行列号，成为真正的结束位置
+
+                        selend = ascend + selendrow.ToString();
+
+                        //定义复制区域第一行为查找对象
+                        Excel.Range rowRange = ((Excel.Worksheet)workbook.Worksheets[si]).Rows[countrow];
+                        // 初始化最大跨度
+                        int maxRowSpan = 1;
+                        foreach (Excel.Range cell in rowRange.Cells)
+                        {
+                            string bbb = rowRange.ToString();
+                            string aaa = cell.Value;
+                            //如果是合并单元格
+                            if (cell.MergeCells)
+                            {
+                                // 合并单元格的行跨度
+                                int rowSpan = cell.MergeArea.Rows.Count;
+                                if (rowSpan > maxRowSpan)
+                                {
+                                    // 更新最大跨度
+                                    maxRowSpan = rowSpan;
+                                }
+                            }
+                            //碰到第一个不是合并单元格的空单元格贼跳出循环
+                            else if (string.IsNullOrEmpty(cell.Value))
+                            {
+                                break;
+                            }
+                        }
+                        //将最大跨度赋值给rowtitle
+                        rowtitle = maxRowSpan;
+
+
+                        //跳出整个循环
+
+                        break;
+                    }
+                    else
+                    {
+                        MessageBox.Show("在" + (Excel.Worksheet)workbook.Worksheets[si].Name + "中未找到需要复制的区域");
+                    }
+                }
+
+                //复制选择区域
+
+                ((Excel.Worksheet)workbook.Worksheets[si]).Range[selstart + ":" + selend].Copy();
+
+                wordApp.Selection.HomeKey(WdUnits.wdStory, WdMovementType.wdMove);
+                //这个数字是可见的顺序，跟sheet7和sheet8不同
+
+                string tofindtext = ((Excel.Worksheet)workbook.Worksheets[8]).Cells[si + 2, "B"].Value;
+
+                // 找到并选中要查找的文本
+                if (wordApp.Selection.Find.Execute(tofindtext))
+                {
+
+                    // 删除文本
+
+                    wordApp.Selection.Delete();
+
+                    //向下 移动鼠标光标两行
+
+                    wordApp.Selection.MoveDown(WdUnits.wdLine, 2);
+
+
+
+
+                }
+
+
+                try
+                {
+                    if (wordApp.Selection.Tables.Count > 0)
+                    {
+                        // 获取光标所在的表格
+                        var table = wordApp.Selection.Tables[1];
+                        // 删除表格
+                        table.Delete();
+
+                        // 等待一定时间，模拟断点的作用
+                        System.Threading.Thread.Sleep(1);
+
+                        //粘贴表格
+                        wordApp.Selection.Paste();
+
+                        //向上 移动鼠标光标两行
+
+                        wordApp.Selection.MoveUp(WdUnits.wdLine, 2);
+
+                        // 获取光标所在的表格
+                        table = wordApp.Selection.Tables[1];
+
+                        //调整word格式
+
+                        //设置表格属性为在各页顶端以标题形式重复出现
+                        table.Cell(1, 1).Range.Rows.HeadingFormat = -1;
+                        // 将表格页面居中并按窗口自动调整表格宽度
+                        table.Range.Select();
+                        table.Rows.Alignment = Word.WdRowAlignment.wdAlignRowCenter;
+                        table.AutoFitBehavior(Word.WdAutoFitBehavior.wdAutoFitWindow);
+
+                        // 取消整个表格的左框线和右框线
+                        table.Borders[Word.WdBorderType.wdBorderLeft].LineStyle = Word.WdLineStyle.wdLineStyleNone;
+                        table.Borders[Word.WdBorderType.wdBorderRight].LineStyle = Word.WdLineStyle.wdLineStyleNone;
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("复制数据时出现异常：" + ex.Message);
+                }
+
+                try
+                {
+                    // 选中整个文档
+                    wordApp.Selection.WholeStory();
+
+                    // 将字体改为宋体
+                    wordApp.Selection.Font.Name = "宋体";
+
+                    // 将字体改为Times New Roman
+                    wordApp.Selection.Font.Name = "Times New Roman";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("修改字体时出现异常：" + ex.Message);
+                }
+
+
+
+                //wordApp.Visible = true;
+                ////wordDoc.Save();
+                ////wordDoc.Close();
+
+                ////wordApp.Quit();
+                //wordApp = null;
+                //wordDoc = null;
+
+                //// 关闭并保存word文档
+                //wordDoc.Close();
+                //wordApp.Quit();
+                ////关闭但不保存excel的变化
+                //workbook.Close(false);
+                //excelApp.Quit();
+            }
+
+            //展示excel和word
+            excelApp.Visible = true;
+            wordApp.Visible = true;
+
+            //输出任务完成，提示用户
+
+            MessageBox.Show("任务完成！！！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+
+        }
